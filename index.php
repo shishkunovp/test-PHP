@@ -6,6 +6,19 @@
 </head>
 <body>
 <?php
+function errorUrl()
+{
+    $url = 'https://www.cbr-xml-daily.ru';
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $curl_result = curl_exec($ch);
+    curl_close($ch);
+    if ($curl_result !== false) {
+        return true;
+    } else {
+        return false;
+    }
+}
 function setCacheCurrencyExchange($currency)
 {
     if (file_exists("cache.txt"))
@@ -66,20 +79,20 @@ function clientCode($valute)
 {
     $date = getdate();
     $usd1 = CurrencyExchange::getInstance();
-        if ($date["seconds"] > 30)
-        {
-            try {
-                if (false == ($error = $usd1->getExchangeRate())) throw new Exception("сервер не доступен");
-                    $usd1->updateExchangeRate($valute);
-                    $usd1->showExchangeRate($valute);
-                } catch (Exception $e){
-                    echo $e->getMessage();
-                    echo $e->getLine();
-                }
-        }
-        else {viewCacheCurrencyExchange();}
+    if ($date["seconds"] > 30)
+    {
+            $usd1->updateExchangeRate($valute);
+            $usd1->showExchangeRate($valute);
+    }
+    else {viewCacheCurrencyExchange();}
 }
-clientCode("EUR");
+try {
+    if (errorUrl() === false) throw new Exception("сервер не доступен");
+    clientCode("EUR");
+    } catch (Exception $e){
+            echo $e->getMessage();
+        }
+
 ?>
 </body>
 </html>
