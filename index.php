@@ -6,41 +6,6 @@
 </head>
 <body>
 <?php
-function errorUrl()
-{
-    $url = 'https://www.cbr-xml-daily.ru';
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $curl_result = curl_exec($ch);
-    curl_close($ch);
-    if ($curl_result !== false) {
-        return true;
-    } else {
-        return false;
-    }
-}
-function setCacheCurrencyExchange($currency)
-{
-    if (file_exists("cache.txt"))
-    {
-        $cache = fopen("cache.txt", "w");
-        fwrite($cache, "$currency\n");
-        fclose($cache);
-        echo "В файл cache.txt добавлена запись\n";
-    }
-    else echo "Файл cache.txt не найден\n";
-}
-function viewCacheCurrencyExchange()
-{
-    if (file_exists("cache.txt"))
-    {
-        $cache = fopen("cache.txt", "r");
-        $result = fgets($cache);
-        echo $result;
-    }
-    else echo "Файл cache.txt не найден\n";
-}
-
 class Singleton
 {
     private static $instances;
@@ -68,11 +33,46 @@ class CurrencyExchange extends Singleton
     public function updateExchangeRate($value)
     {
         $this->data = $this->getExchangeRate();
-        setCacheCurrencyExchange("Обменный курс $value по ЦБ РФ на сегодня: {$this->data->Valute->$value->Value}\n");
+        $this->setCacheCurrencyExchange("Обменный курс $value по ЦБ РФ на сегодня: {$this->data->Valute->$value->Value}\n");
     }
     public function showExchangeRate($value)
     {
         echo "Обменный курс $value по ЦБ РФ на сегодня: {$this->data->Valute->$value->Value}\n";
+    }
+
+    public function errorUrl()
+    {
+        $url = 'https://www.cbr-xml-daily.ru';
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $curl_result = curl_exec($ch);
+        curl_close($ch);
+        if ($curl_result !== false) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    public function setCacheCurrencyExchange($currency)
+    {
+        if (file_exists("cache.txt"))
+        {
+            $cache = fopen("cache.txt", "w");
+            fwrite($cache, "$currency\n");
+            fclose($cache);
+            echo "В файл cache.txt добавлена запись\n";
+        }
+        else echo "Файл cache.txt не найден\n";
+    }
+    public function viewCacheCurrencyExchange()
+    {
+        if (file_exists("cache.txt"))
+        {
+            $cache = fopen("cache.txt", "r");
+            $result = fgets($cache);
+            echo $result;
+        }
+        else echo "Файл cache.txt не найден\n";
     }
 }
 function clientCode($valute)
@@ -81,18 +81,15 @@ function clientCode($valute)
     $usd1 = CurrencyExchange::getInstance();
     if ($date["seconds"] > 30)
     {
+            try {
+            if ($usd1->errorUrl() === false) throw new Exception("сервер не доступен");
             $usd1->updateExchangeRate($valute);
             $usd1->showExchangeRate($valute);
+            } catch (Exception $e){echo $e->getMessage();}
     }
-    else {viewCacheCurrencyExchange();}
+    else {$usd1->viewCacheCurrencyExchange();}
 }
-try {
-    if (errorUrl() === false) throw new Exception("сервер не доступен");
-    clientCode("EUR");
-    } catch (Exception $e){
-            echo $e->getMessage();
-        }
-
+clientCode("EUR");
 ?>
 </body>
 </html>
