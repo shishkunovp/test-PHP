@@ -1,221 +1,161 @@
-<?php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Задание 7</title>
+    <link href="styles/style.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
 
+<?php
 require 'vendor/autoload.php';
 
-use Intervention\Image\ImageManagerStatic as Image;
-
-Image::configure(['driver' => 'imagick']);
-
-abstract class Shape
+class Singleton
 {
-    public $color;
-    public $borderThickness;
-    public $position = [];
-
-    public function __construct($color, $borderThickness, $position)
+    private static $instances = [];
+    protected function __construct() { }
+    protected function __clone() { }
+    public function __wakeup()
     {
-        $this->color = $color;
-        $this->borderThickness = $borderThickness;
-        $this->position = $position;
+        throw new \Exception("Cannot unserialize a singleton.");
     }
-
-    public function draw($img)
+    public static function getInstance()
     {
-    }
-
-    public function move($newPosition)
-    {
-        $this->position = $newPosition;
-    }
-
-    public function resize($newSize)
-    {
-
-    }
-
-    public function newColor($newcolor)
-    {
-        $this->color = $newcolor;
-    }
-
-    public function newBorderThickness($newBorderThickness)
-    {
-        $this->borderThickness = $newBorderThickness;
-    }
-
-
-}
-
-class Circle extends Shape
-{
-    public $radius;
-
-    public function __construct($color, $borderThickness, $position, $radius)
-    {
-        parent::__construct($color, $borderThickness, $position);
-        $this->radius = $radius;
-    }
-
-    public function draw($img)
-    {
-        $img->circle($this->radius, $this->position[0], $this->position[1], function ($draw) {
-            $draw->border($this->borderThickness, '#00000');
-            $draw->background($this->color);
-        });
-
-    }
-
-    public function resize($newSize)
-    {
-        $this->radius = $this->radius * $newSize;// TODO: Implement resize() method.
-    }
-}
-
-class Rectangle extends Shape
-{
-    public $sideA;
-    public $sideB;
-
-    public function __construct($color, $borderThickness, $position, $sideA, $sideB)
-    {
-        parent::__construct($color, $borderThickness, $position);
-        $this->sideA = $sideA;
-        $this->sideB = $sideB;
-    }
-
-    public function draw($img)
-    {
-        $img->rectangle($this->position[0], $this->position[1], $this->position[0]+$this->sideA, $this->position[1]+$this->sideB, function ($draw) {
-            $draw->border($this->borderThickness, '#00000');
-            $draw->background($this->color);
-        });
-
-    }
-
-    public function resize($newSize)
-    {
-        $this->sideA = $newSize * $this->sideA;// TODO: Implement resize() method.
-        $this->sideB = $newSize * $this->sideB;
-    }
-
-}
-
-class Triangle extends Shape
-{
-    public $width;
-    public function __construct($color, $borderThickness, $position,$width)
-    {
-        parent::__construct($color, $borderThickness, $position);
-        $this->width = $width;
-    }
-
-    public function draw($img)
-    {
-        $p1_x = $this->position[0];
-        $p1_y = $this->position[1]+($this->width/2);
-
-        $p2_x = $this->position[0]+($this->width/2);
-        $p2_y = $this->position[1];
-
-        $p3_x = $this->position[0]+$this->width;
-        $p3_y = $this->position[1]+($this->width/2);
-
-        $points = array($p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y);
-        $img->polygon($points, function ($draw) {
-            $draw->border($this->borderThickness, '#00000');
-            $draw->background($this->color);
-        });
-
-    }
-
-    public function resize($newSize)
-    {
-        $this->width = $newSize * $this->width;
-    }
-}
-
-class Group
-{
-    public $nameGroup;
-    public $shapes = [];
-
-    public function __construct($nameGroup)
-    {
-        $this->nameGroup = $nameGroup;
-    }
-
-    public function draw($img)
-    {
-        foreach ($this->shapes as $shape) {
-            $shape->draw($img);
-
+        $cls = static::class;
+        if (!isset(self::$instances[$cls])) {
+            self::$instances[$cls] = new static();
         }
+        return self::$instances[$cls];
     }
+}
 
-    public function addShape(Shape $shape)
+class Coinmarketcap extends Singleton {
+    private $data;
+    public function getCryptoPrice()
     {
-        $this->shapes[] = $shape;
+        $url = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest';
+        $parameters = [
+            'start' => '1',
+            'limit' => '50',
+            'convert' => 'USD'
+        ];
+        $headers = [
+            'Accepts: application/json',
+            'X-CMC_PRO_API_KEY: bb5a900a-4c93-4f35-8beb-3ed9ef5f186f'
+        ];
+        $qs = http_build_query($parameters); // query string encode the parameters
+        $request = "{$url}?{$qs}"; // create the request URL
+        $curl = curl_init(); // Get cURL resource
+        // Set cURL options
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $request,            // set the request URL
+            CURLOPT_HTTPHEADER => $headers,     // set the headers
+            CURLOPT_RETURNTRANSFER => 1         // ask for raw response instead of bool
+        ));
+        $response = curl_exec($curl);// Send the request, save the response
+        curl_close($curl); // Close request
+        return json_decode($response); // print json decoded response;
     }
-
-    public function deleteShape(Shape $shape)
+    public function viewCryptoPrice ()
     {
-        $index = array_search($shape, $this->shapes, true);
-        unset($this->shapes[$index]);
-    }
+        try {
+            $this->data = $this->getCryptoPrice();
+            if ($this->data === NULL) throw new Exception('Ошибка подключения к coinmarketcap.com');
+            $i = 0;
+            foreach ($this->data->data as $item) {
+                $i++;
+                echo "
+                <tr>
+                    <td>{$i}</td>
+                    <td>{$item->name}</td>
+                    <td>{$item->quote->USD->price}</td>
+                </tr>";
 
-    public function resize($newResize)
-    {
-        foreach ($this->shapes as $shape) {
-            $shape->resize($newResize);
+            }
         }
-    }
-
-    public function move($newPosition)
-    {
-        foreach ($this->shapes as $shape) {
-            $shape->move([$shape->position[0] + $newPosition[0], $shape->position[1]+ $newPosition[1]]);
+        catch (Exception $error)
+        {
+            echo $error->getMessage();
         }
     }
 }
 
-    $img = Image::canvas(800, 600);
+class Investing extends Singleton {
+    private $data;
+    public function errorUrl()
+    {
+        $url = 'https://investing-cryptocurrency-markets.p.rapidapi.com';
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $curl_result = curl_exec($ch);
+        curl_close($ch);
+        if ($curl_result !== false) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    public function getCryptoPrice()
+    {
+        $client = new \GuzzleHttp\Client();
+        $response = $client->request('GET', 'https://investing-cryptocurrency-markets.p.rapidapi.com/coins/list?edition_currency_id=12&time_utc_offset=28800&lang_ID=1&sort=TOTAL_VOLUME_DN%20&page=1', [
+            'headers' => [
+                'X-RapidAPI-Host' => 'investing-cryptocurrency-markets.p.rapidapi.com',
+                'X-RapidAPI-Key' => '1dea2305camsh2bbd42fe6be3da0p17bd83jsn6e651ffc4e11',
+            ],
+        ]);
+        return json_decode($response->getBody());
+    }
+    public function viewCryptoPrice ()
+    {
+        $this->data = $this->getCryptoPrice();
+        $i = 0;
+        foreach ($this->data->data as $item) {
+            foreach ($item->screen_data->crypto_data as $crypto_datum){
+                $i++;
+                echo "
+                <tr>
+                    <td>{$i}</td>
+                    <td>{$crypto_datum->name}</td>
+                    <td>{$crypto_datum->inst_price_usd}</td>
+                </td>";
+            }
+        }
+    }
+}
 
-    $circle1 = new Circle('#00abcd', 5, [200, 200], 100);
-    $circle1->move([1,1]);
-    $circle1->resize(2);
-
-    $rectangle1 = new Rectangle('#000fda', 3,[100, 100], 10,10);
-    $rectangle1->move([20,20]);
-    $rectangle1->resize(2);
-
-    $triangle1 = new Triangle('#00abdc', 2,[1,100], 200);
-    $triangle1->newColor('#ff2122');
-    $triangle1->newBorderThickness(4);
-
-    $circle2 = new Circle('#00abcd', 5, [200, 200], 100);
-    $circle2->move([300,55]);
-    $circle2->newColor('#ff2122');
-
-    $rectangle2 = new Rectangle('#ff2122', 3,[300, 300], 50,50);
-
-    $group1 = new Group('Первая');
-    $group1->addShape($circle2);
-    $group1->addShape($rectangle2);
-    $group1->move([200,100]);
-    $group1->deleteShape($rectangle2);
-    $group1->resize(2);
-    $group1->draw($img);
-
-    $group2 = new Group('Вторая');
-    $group2->addShape($circle1);
-    $group2->addShape($rectangle1);
-    $group2->addShape($triangle1);
-    $group2->move([100,200]);
-    $group2->resize(2);
-    $group2->draw($img);
-
-    $img->save('bar.png');
-    $im = file_get_contents("bar.png");
-    header("Content-type: image/jpeg");
-    echo $im;
+$coinmarketcup = Coinmarketcap::getInstance();
+$investing = Investing::getInstance();
 ?>
+
+<div class="coinmarketcap">
+<table>
+    <caption>coinmarketcap.com</caption>
+    <tr>
+        <th>№ п/п</th>
+        <th>Наименование криптовалюты</th>
+        <th>Цена, $ </th>
+    </tr>
+    <?php $coinmarketcup->viewCryptoPrice(); ?>
+</table>
+</div>
+<div class="investing">
+<table>
+    <caption>investing.com</caption>
+    <tr>
+        <th>№ п/п</th>
+        <th>Наименование криптовалюты</th>
+        <th>Цена, $</th>
+    </tr>
+    <?php
+    try {
+        if ($investing->errorUrl() === false) throw new Exception("Ошибка подключения к investing.com");
+            $investing->viewCryptoPrice();
+    } catch (Exception $e){echo $e->getMessage();}
+    ?>
+</table>
+</div>
+
+</body>
+</html>
+

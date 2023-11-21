@@ -1,6 +1,7 @@
 {
     "require": {
-        "intervention/image": "^2.7",
-        "talesoft/phim": "^1.0"
+        "talesoft/phim": "^1.0",
+        "imangazaliev/didom": "^2.0",
+        "guzzlehttp/guzzle": "^7.8"
     }
 }
